@@ -4,7 +4,7 @@ Charles join tracker — log-bot parser only (self-bot).
 Watches log-bot "New Member Joined!" messages (on_message) and forwards a
 capture card to one group chat. Same strict model as Documents/scraper (Pikanto).
 
-Set USER_TOKEN + CHAT_ID in .env or on Render.
+Set DISCORD_TOKEN + CHAT_ID_CLIENT_1 (or USER_TOKEN + CHAT_ID) in .env or on Render.
 
 WARNING: Automating a user account (self-botting) violates Discord's ToS.
 """
@@ -17,8 +17,6 @@ import time
 
 import discord
 from dotenv import load_dotenv
-
-USER_TOKEN = ""
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(line_buffering=True)
@@ -99,22 +97,42 @@ class C:
 _env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
 if os.path.isfile(_env_path):
     load_dotenv(_env_path)
+else:
+    load_dotenv()
 
-_env_token = (
-    os.getenv("USER_TOKEN")
-    or os.getenv("DISCORD_TOKEN")
-    or os.getenv("TOKEN")
-    or ""
-).strip()
-if _env_token:
-    USER_TOKEN = _env_token
 
-CLIENT_NAME = (os.getenv("CLIENT_NAME") or "Charles").strip()
-CHAT_ID = (
-    os.getenv("CHAT_ID")
-    or os.getenv("FORWARD_CHAT_ID")
-    or ""
-).strip()
+def _client_index() -> int:
+    raw = (os.getenv("CLIENT_INDEX") or "1").strip()
+    try:
+        return max(1, int(raw))
+    except ValueError:
+        return 1
+
+
+def _load_credentials(index: int) -> tuple[str, int, str]:
+    token = (
+        (os.getenv("USER_TOKEN") or os.getenv("DISCORD_TOKEN") or os.getenv("TOKEN") or "")
+        .strip()
+        or (os.getenv(f"TOKEN_CLIENT_{index}") or "").strip()
+    )
+    chat_raw = (
+        (os.getenv(f"CHAT_ID_CLIENT_{index}") or "").strip()
+        or (os.getenv("CHAT_ID") or "").strip()
+        or (os.getenv("FORWARD_CHAT_ID") or "").strip()
+        or (os.getenv("CHAT_ID_CLIENT_1") or "").strip()
+        or "0"
+    )
+    label = (
+        (os.getenv("CLIENT_NAME") or os.getenv(f"NAME_CLIENT_{index}") or "")
+        .strip()
+        or "Charles"
+    )
+    return token, int(chat_raw or 0), label
+
+
+CLIENT_INDEX = _client_index()
+TOKEN, CHAT_ID, CLIENT_NAME = _load_credentials(CLIENT_INDEX)
+
 SEND_STARTUP_PING = (os.getenv("SEND_STARTUP_PING") or "true").strip().lower() in (
     "1",
     "true",
@@ -235,8 +253,9 @@ def parse_join_log(full_text: str) -> dict | None:
 
 
 class ScraperClient(discord.Client):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, target_chat_id: int, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.target_chat_id = target_chat_id
         self._recent_captures: dict[tuple[str, str], float] = {}
         self._forward_channel: discord.abc.Messageable | None = None
         self._ready_once = False
@@ -244,30 +263,25 @@ class ScraperClient(discord.Client):
 
     async def _open_forward_channel(self) -> None:
         self._forward_channel = None
-        if not CHAT_ID:
+        if not self.target_chat_id:
             print(
-                f"[{CLIENT_NAME}] No CHAT_ID set — terminal only.",
+                f"[{CLIENT_NAME}] No target chat ID configured; will capture but not forward.",
                 flush=True,
             )
             return
         try:
-            channel_id = int(CHAT_ID)
-        except ValueError:
-            print(f"[{CLIENT_NAME}] Invalid CHAT_ID: {CHAT_ID!r}", flush=True)
-            return
-        try:
-            channel = self.get_channel(channel_id)
+            channel = self.get_channel(self.target_chat_id)
             if channel is None:
-                channel = await self.fetch_channel(channel_id)
+                channel = await self.fetch_channel(self.target_chat_id)
             self._forward_channel = channel
-            label = getattr(channel, "name", None) or str(channel)
             print(
-                f"[{CLIENT_NAME}] Forwarding captures to: {label} (id: {channel_id})",
+                f"[{CLIENT_NAME}] Forwarding captures to: {channel} "
+                f"(id: {self.target_chat_id})",
                 flush=True,
             )
         except Exception as exc:
             print(
-                f"[{CLIENT_NAME}] Could not open chat {CHAT_ID}: {exc}",
+                f"[{CLIENT_NAME}] Could not open chat {self.target_chat_id}: {exc}",
                 flush=True,
             )
 
@@ -369,17 +383,24 @@ def _is_network_error(exc: BaseException) -> bool:
 
 
 async def main():
-    if not USER_TOKEN:
+    if not TOKEN:
         raise SystemExit(
-            "No token set. Set USER_TOKEN in .env or on Render."
+            "No token set. Use DISCORD_TOKEN, USER_TOKEN, or TOKEN_CLIENT_N on this worker."
+        )
+    if not CHAT_ID:
+        raise SystemExit(
+            "No chat ID set. Use CHAT_ID_CLIENT_1, CHAT_ID, or CHAT_ID_CLIENT_N on this worker."
         )
 
-    print(f"[{CLIENT_NAME}] Starting scraper...", flush=True)
-    client = ScraperClient()
+    print(
+        f"[{CLIENT_NAME}] Starting scraper (Option C, chat id {CHAT_ID})...",
+        flush=True,
+    )
+    client = ScraperClient(target_chat_id=CHAT_ID)
 
     for attempt in range(1, 6):
         try:
-            await client.start(USER_TOKEN)
+            await client.start(TOKEN)
             return
         except KeyboardInterrupt:
             print(f"\n[{CLIENT_NAME}] Stopped.", flush=True)

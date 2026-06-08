@@ -1,5 +1,5 @@
 # Render Blueprint — Charles Background Worker
-# Set USER_TOKEN in the Render dashboard (Environment), not here.
+# Set DISCORD_TOKEN in the Render dashboard (Environment), not here.
 services:
   - type: worker
     name: charles-join-tracker
@@ -10,11 +10,11 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.9"
-      - key: CHAT_ID
+      - key: CHAT_ID_CLIENT_1
         value: "1513368745408729299"
       - key: CLIENT_NAME
         value: Charles
       - key: SEND_STARTUP_PING
         value: "true"
-      - key: USER_TOKEN
+      - key: DISCORD_TOKEN
         sync: false

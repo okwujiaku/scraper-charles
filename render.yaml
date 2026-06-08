@@ -1,0 +1,28 @@
+# Render Blueprint — Charles Background Worker
+# Set USER_TOKEN in the Render dashboard (Environment), not here.
+services:
+  - type: worker
+    name: charles-join-tracker
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: CHAT_ID
+        value: "1513368745408729299"
+      - key: CLIENT_NAME
+        value: Charles
+      - key: CAPTURE_MODE
+        value: all
+      - key: DEBUG
+        value: "false"
+      - key: SEND_STARTUP_PING
+        value: "true"
+      - key: TEST_CAPTURE
+        value: "false"
+      - key: DISPLAY_TIMEZONE
+        value: Africa/Lagos
+      - key: USER_TOKEN
+        sync: false

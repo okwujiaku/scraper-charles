@@ -5,16 +5,15 @@ services:
     name: charles-join-tracker
     runtime: python
     plan: starter
+    rootDir: bot
     buildCommand: pip install -r requirements.txt
     startCommand: python bot.py
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.9"
-      - key: CHAT_ID_CLIENT_1
+      - key: CHAT_ID
         value: "1513368745408729299"
       - key: CLIENT_NAME
         value: Charles
-      - key: SEND_STARTUP_PING
-        value: "true"
       - key: DISCORD_TOKEN
         sync: false

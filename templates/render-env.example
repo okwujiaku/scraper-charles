@@ -1,0 +1,11 @@
+# Set on each Render Background Worker (one brand per worker)
+
+DISCORD_TOKEN=
+CHAT_ID=
+CLIENT_NAME=Brand Name
+PYTHON_VERSION=3.11.9
+
+# Numbered example (same worker, different numbering):
+# CLIENT_INDEX=2
+# TOKEN_CLIENT_2=
+# CHAT_ID_CLIENT_2=

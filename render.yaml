@@ -15,5 +15,7 @@ services:
         value: "1513368745408729299"
       - key: CLIENT_NAME
         value: Charles
+      - key: DISPLAY_TIMEZONE
+        value: Africa/Lagos
       - key: DISCORD_TOKEN
         sync: false
